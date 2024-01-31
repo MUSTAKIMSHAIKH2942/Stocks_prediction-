@@ -1,0 +1,25 @@
+import pandas as pd
+import numpy as np
+import datetime
+
+# Function to generate synthetic stock data
+def generate_stock_data(start_date, end_date, initial_price, volatility):
+    date_range = pd.date_range(start=start_date, end=end_date)
+    num_days = len(date_range)
+    daily_returns = np.random.normal(0, volatility, num_days)
+    prices = [initial_price]
+    for i in range(1, num_days):
+        prices.append(prices[i-1] * (1 + daily_returns[i]))
+    return pd.DataFrame({'Date': date_range, 'Close': prices})
+
+# Generate synthetic data
+start_date = datetime.datetime(2023, 1, 1)
+end_date = datetime.datetime(2023, 12, 31)
+initial_price = 100  # Initial stock price
+volatility = 0.02  # Volatility of the stock (standard deviation of daily returns)
+stock_data = generate_stock_data(start_date, end_date, initial_price, volatility)
+
+# Save data to CSV
+stock_data.to_csv('stock_data.csv', index=False)
+
+print("Data saved to stock_data.csv")
