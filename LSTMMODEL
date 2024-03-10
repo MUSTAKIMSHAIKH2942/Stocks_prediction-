@@ -1,0 +1,74 @@
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from sklearn.impute import SimpleImputer  # For handling missing values
+import numpy as np  # For NumPy slicing (optional)
+
+# Download historical data (replace 'AAPL' with your desired symbol)
+ticker = yf.download('AAPL', period='max')
+
+# Select relevant features (e.g., closing price)
+data = ticker[['Close']]
+
+# Check for missing values
+missing_values_count = data.isnull().sum()
+print(missing_values_count)
+
+# Impute missing values (adjust strategy as needed)
+imputer = SimpleImputer(strategy='mean')  # Consider median or domain-specific strategies if appropriate
+data = pd.DataFrame(imputer.fit_transform(data))
+
+# Normalize data (optional, but recommended for LSTM models)
+scaler = MinMaxScaler(feature_range=(0, 1))
+normalized_data = scaler.fit_transform(data)
+
+# Define window size for sequence creation (e.g., past 30 closing prices)
+window_size = 30
+
+# Create sequences for training and testing (consider validation set for hyperparameter tuning)
+train_data, test_data = [], []
+for i in range(window_size, len(normalized_data)):
+    train_data.append(normalized_data[i-window_size:i, 0])  # Only use closing price (index 0)
+    test_data.append(normalized_data[i, 0])
+
+# Reshape data for LSTM model (samples, timesteps, features)
+train_sequences = np.array(train_data).reshape(len(train_data), window_size, 1)
+test_sequences = np.array(test_data).reshape(len(test_data), 1, 1)  # Reshape for prediction
+
+# Define LSTM model architecture
+model = Sequential()
+model.add(LSTM(50, return_sequences=True, input_shape=(window_size, 1)))
+model.add(LSTM(50))
+model.add(Dense(1))
+model.compile(loss='mse', optimizer='adam')
+
+# Train the model (adjust epochs and batch size as needed)
+# Option A (list comprehension): recommended if not using NumPy
+# train_targets = [sequence[-1] for sequence in train_data]
+# model.fit(train_sequences, train_targets, epochs=100, batch_size=32)
+
+# Option B (NumPy slicing): if using NumPy
+train_targets = np.array(train_data)[:, -1]
+model.fit(train_sequences, train_targets, epochs=100, batch_size=32)
+
+# Predict closing price for test data
+predicted_prices = model.predict(test_sequences)
+
+# Invert normalization (optional, if you normalized the data)
+predicted_prices = scaler.inverse_transform(predicted_prices.reshape(-1, 1))
+
+# Evaluate model performance (optional)
+# You can use metrics like mean squared error (MSE) or other regression evaluation metrics
+
+# Plot actual vs. predicted prices (optional)
+import matplotlib.pyplot as plt
+try:
+    # Assuming "Close" is the correct column name
+    plt.plot(data.index[-len(test_data):], predicted_prices, label='Predicted')
+    plt.plot(data.index[-len(test_data):], data['Close'][-len(test_data):], label='Actual')
+except KeyError:
+    print("Error: 'Close' column not found in data")
+
+plt.legend()
+plt.show()
