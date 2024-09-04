@@ -55,6 +55,7 @@ model.fit(train_sequences, train_targets, epochs=100, batch_size=32)
 # Predict closing price for test data
 predicted_prices = model.predict(test_sequences)
 
+
 # Invert normalization (optional, if you normalized the data)
 predicted_prices = scaler.inverse_transform(predicted_prices.reshape(-1, 1))
 
